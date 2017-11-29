@@ -1,0 +1,72 @@
+---
+# tasks file for kafka
+- name: Create folders for downloaded files and kafka
+  file:
+    name: "{{ item }}"
+    state: directory
+  with_items:
+    - "{{ DOWNLOAD_DIR }}"
+    - "{{ KAFKA_DIR }}"
+- name: Create kafka user
+  user:
+    name: "{{ KAFKA_USER }}"
+    state: present
+- name: Allow current user to execute commands as kafka user
+  lineinfile:
+    name: /etc/sudoers.d/kafka
+    line: "{{ ansible_user }} ALL=({{ KAFKA_USER }}) NOPASSWD: ALL"
+    create: true
+- name: Download kafka archive
+  get_url:
+    url: "{{ KAFKA_URL }}"
+    dest: "{{ DOWNLOAD_DIR }}"
+- name: unarchive kafka archive file
+  unarchive:
+    src: "{{ DOWNLOAD_DIR }}/kafka_2.11-{{ KAFKA_VERSION }}.tgz"
+    dest: "{{ KAFKA_DIR }}"
+    exclude: config/server.properties,logs
+    remote_src: true
+  notify: restart kafka
+- name: Copy kafka config file
+  template:
+    src: server.properties.j2
+    dest: "{{ KAFKA_DIR }}/kafka_2.11-{{ KAFKA_VERSION }}/config/server.properties"
+  notify: restart kafka
+- name: Create kafka log dir
+  file:
+    name: "{{ KAFKA_LOG_DIR }}"
+    state: directory
+    owner: "{{ KAFKA_USER }}"
+    group: "{{ KAFKA_USER }}"
+- name: Change ownership of kafka log directory
+  file:
+    name: "{{ KAFKA_DIR }}/kafka_2.11-{{ KAFKA_VERSION }}/logs"
+    state: directory
+    owner: "{{ KAFKA_USER }}"
+    group: "{{ KAFKA_USER }}"
+    recurse: true
+- name: Start kafka
+  shell: |
+    KAF=`sudo -u {{ KAFKA_USER }} jps | grep "Kafka"`
+    if [ -z $KAF ]
+    then
+      sudo -u {{ KAFKA_USER }} {{ KAFKA_DIR }}/kafka_2.11-{{ KAFKA_VERSION }}/bin/kafka-server-start.sh -daemon {{ KAFKA_DIR }}/kafka_2.11-{{ KAFKA_VERSION }}/config/server.properties
+    else
+      echo "Already running"
+    fi
+  register: kafka
+  changed_when: kafka.stdout != "Already running"
+- name: Create kafka topics if specified
+  shell: |
+    cd {{ KAFKA_DIR }}/kafka_2.11-{{ KAFKA_VERSION }}
+    TOPIC=`sudo -u {{ KAFKA_USER }} bin/kafka-topics.sh --zookeeper {{ KAFKA_ZOOKEEPER_URL }} --list | grep {{ item.name }}`
+    if [ -z $TOPIC ]
+    then
+      echo changed
+      sudo -u {{ KAFKA_USER }} bin/kafka-topics.sh --create --zookeeper {{ KAFKA_ZOOKEEPER_URL }} --replication-factor {{ item.replication_factor|d(1) }} --partitions {{ item.partitions|d(1) }} --topic {{ item.name }} > /dev/null
+    fi
+  when: KAFKA_TOPICS is defined
+  with_items:
+    - "{{ KAFKA_TOPICS }}"
+  register: kafka_topics
+  changed_when: kafka_topics.stdout == "changed"

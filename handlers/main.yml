@@ -1,0 +1,8 @@
+---
+# handlers file for kafka
+- name: restart kafka
+  shell: |
+    PID=`jps | grep "Kafka" | cut -d " " -f1`
+    kill $PID
+    sleep 1
+    {{ KAFKA_DIR }}/kafka_2.11-{{ KAFKA_VERSION }}/bin/kafka-server-start.sh -daemon {{ KAFKA_DIR }}/kafka_2.11-{{ KAFKA_VERSION }}/config/server.properties

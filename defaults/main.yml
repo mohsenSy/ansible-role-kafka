@@ -1,0 +1,6 @@
+---
+# defaults file for kafka
+KAFKA_USER: kafka
+KAFKA_VERSION: 1.0.0
+KAFKA_LOG_DIR: /tmp/kafka-logs
+KAFKA_ZOOKEEPER_URL: localhost:2181

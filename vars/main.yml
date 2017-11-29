@@ -1,0 +1,5 @@
+---
+# vars file for kafka
+DOWNLOAD_DIR: /opt/archives
+KAFKA_DIR: /opt/kafka
+KAFKA_URL: "http://apache.panu.it/kafka/{{ KAFKA_VERSION }}/kafka_2.11-{{ KAFKA_VERSION }}.tgz"
