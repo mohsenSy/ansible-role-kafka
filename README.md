@@ -1,4 +1,4 @@
-Role Name
+kafka
 =========
 
 A sinple ansible role to install and configure apache kafka.
